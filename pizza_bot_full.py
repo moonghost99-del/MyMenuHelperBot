@@ -60,33 +60,17 @@ menu = {
         {"name": "Креветка в панировке", "description": "6 штук + соус тартар - 320руб"},
     ],
     "Добавки": [
-        {"name": "Сыр", "description": "80руб"},
-        {"name": "Филе куриное", "description": "60руб"},
-        {"name": "Охотничьи колбаски", "description": "60руб"},
-        {"name": "Ветчина", "description": "60руб"},
-        {"name": "Салями", "description": "60руб"},
-        {"name": "Балык", "description": "60руб"},
-        {"name": "Бекон", "description": "60руб"},
-        {"name": "Кукуруза", "description": "30руб"},
-        {"name": "Перец болгарский", "description": "30руб"},
-        {"name": "Шампиньоны", "description": "30руб"},
-        {"name": "Маслины", "description": "30руб"},
-        {"name": "Помидоры", "description": "30руб"},
-        {"name": "Ананас", "description": "40руб"},
-        {"name": "Огурец соленый", "description": "30руб"},
-        {"name": "Халапеньо", "description": "30руб"},
-        {"name": "Лук", "description": "20руб"},
-        {"name": "Зелень", "description": "20руб"},
+        {"name": "Сыр", "description": "80руб"}, {"name": "Филе куриное", "description": "60руб"}, {"name": "Охотничьи колбаски", "description": "60руб"},
+        {"name": "Ветчина", "description": "60руб"}, {"name": "Салями", "description": "60руб"}, {"name": "Балык", "description": "60руб"},
+        {"name": "Бекон", "description": "60руб"}, {"name": "Кукуруза", "description": "30руб"}, {"name": "Перец болгарский", "description": "30руб"},
+        {"name": "Шампиньоны", "description": "30руб"}, {"name": "Маслины", "description": "30руб"}, {"name": "Помидоры", "description": "30руб"},
+        {"name": "Ананас", "description": "40руб"}, {"name": "Огурец соленый", "description": "30руб"}, {"name": "Халапеньо", "description": "30руб"},
+        {"name": "Лук", "description": "20руб"}, {"name": "Зелень", "description": "20руб"},
     ],
     "Соусы": [
-        {"name": "Кетчуп", "description": "40руб"},
-        {"name": "Соус Чесночный", "description": "40руб"},
-        {"name": "Соус Сырный", "description": "40руб"},
-        {"name": "Соус Кисло-сладкий", "description": "40руб"},
-        {"name": "Соус Терияки", "description": "40руб"},
-        {"name": "Соус Барбекю", "description": "40руб"},
-        {"name": "Соус Грибной", "description": "40руб"},
-        {"name": "Соус Тартар", "description": "40руб"},
+        {"name": "Кетчуп", "description": "40руб"}, {"name": "Соус Чесночный", "description": "40руб"}, {"name": "Соус Сырный", "description": "40руб"},
+        {"name": "Соус Кисло-сладкий", "description": "40руб"}, {"name": "Соус Терияки", "description": "40руб"}, {"name": "Соус Барбекю", "description": "40руб"},
+        {"name": "Соус Грибной", "description": "40руб"}, {"name": "Соус Тартар", "description": "40руб"},
     ]
 }
 TRAINABLE_CATEGORIES = ["Пиццы", "Пироги", "Кальцоне", "Шаурма"]
@@ -94,8 +78,7 @@ ALL_INGREDIENTS = sorted(list(set(ing for cat in TRAINABLE_CATEGORIES for item i
 
 app = Flask(__name__)
 @app.route('/')
-def index():
-    return "Bot is alive!"
+def index(): return "Bot is alive!"
 
 def run_flask():
     port = int(os.environ.get('PORT', 8080))
@@ -117,89 +100,129 @@ async def select_category(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     query = update.callback_query
     await query.answer()
     mode = query.data.split('_')[1]
+    context.user_data['mode'] = mode
 
     categories = menu.keys()
-    if mode in ['guess', 'build']:
-        categories = TRAINABLE_CATEGORIES
+    if mode in ['guess', 'build']: categories = TRAINABLE_CATEGORIES
     
     keyboard = [[InlineKeyboardButton(cat, callback_data=f"start_{mode}_{cat}")] for cat in categories]
     keyboard.append([InlineKeyboardButton("⬅️ Назад", callback_data='main_menu')])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text("Выберите категорию для тренировки:", reply_markup=reply_markup)
+    await query.edit_message_text("Выберите категорию:", reply_markup=reply_markup)
 
 async def start_training_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    _, mode, category = query.data.split('_')
-    
-    if mode == 'guess':
-        items = menu[category]
-        correct_item = random.choice(items)
-        context.user_data['correct_item_name'] = correct_item['name']
-        context.user_data['category'] = category
+    parts = query.data.split('_')
+    mode, category = parts[1], parts[2]
+    context.user_data['category'] = category
 
-        other_items = [item for item in items if item['name'] != correct_item['name']]
-        wrong_options = random.sample(other_items, min(2, len(other_items)))
-        options = [correct_item] + wrong_options
-        random.shuffle(options)
+    if mode == 'guess': await start_guess_mode(query, context, category)
+    elif mode == 'info': await start_info_mode(query, context, category)
+    elif mode == 'build': await start_build_mode(query, context, category)
 
-        keyboard = [[InlineKeyboardButton(item['name'], callback_data=f"check_guess_{item['name']}")] for item in options]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        ingredients_text = ", ".join(correct_item['ingredients'])
-        await query.edit_message_text(f"Из категории '{category}', какому блюду принадлежит состав?\n\n*Состав:* {ingredients_text}", reply_markup=reply_markup)
-
-    elif mode == 'info':
-        items = menu[category]
-        response_text = f"📖 *{category.upper()}*\n\n"
-        for item in items:
-            description = ", ".join(item['ingredients']) if 'ingredients' in item else item.get('description', '')
-            response_text += f"*{item['name']}*\n_{description}_\n\n"
-        
-        keyboard = [[InlineKeyboardButton("⬅️ Выбрать другую категорию", callback_data=f'mode_info')]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text(response_text, reply_markup=reply_markup, parse_mode='Markdown')
+async def start_guess_mode(query, context, category):
+    items = menu[category]
+    correct_item = random.choice(items)
+    context.user_data['correct_item_name'] = correct_item['name']
+    other_items = [item for item in items if item['name'] != correct_item['name']]
+    wrong_options = random.sample(other_items, min(2, len(other_items)))
+    options = [correct_item] + wrong_options
+    random.shuffle(options)
+    keyboard = [[InlineKeyboardButton(item['name'], callback_data=f"check_guess_{item['name']}")] for item in options]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    ingredients_text = ", ".join(correct_item['ingredients'])
+    await query.edit_message_text(f"Из категории '{category}', какому блюду принадлежит состав?\n\n*Состав:* {ingredients_text}", reply_markup=reply_markup, parse_mode='Markdown')
 
 async def check_guess_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-    
+    query = update.callback_query; await query.answer()
     selected_name = query.data.split('check_guess_')[-1]
     correct_name = context.user_data.get('correct_item_name')
     category = context.user_data.get('category')
-    
-    if selected_name == correct_name:
-        text = f"✅ Правильно! Это '{correct_name}'."
-    else:
-        text = f"❌ Неверно. Это был '{correct_name}'."
-
-    keyboard = [
-        [InlineKeyboardButton("➡️ Следующий вопрос", callback_data=f'start_guess_{category}')],
-        [InlineKeyboardButton("⬅️ Выбрать категорию", callback_data='mode_guess')]
-    ]
+    text = f"✅ Правильно! Это '{correct_name}'." if selected_name == correct_name else f"❌ Неверно. Это был '{correct_name}'."
+    keyboard = [[InlineKeyboardButton("➡️ Следующий вопрос", callback_data=f'start_guess_{category}')], [InlineKeyboardButton("⬅️ Выбрать категорию", callback_data='mode_guess')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(text, reply_markup=reply_markup)
 
-# --- ОСНОВНАЯ ФУНКЦИЯ ЗАПУСКА (ИСПРАВЛЕНО) ---
-def main() -> None:
-    # Вставьте сюда ваш НОВЫЙ, СВЕЖЕСГЕНЕРИРОВАННЫЙ токен
-    TOKEN = "8208724950:AAFfowNG4LOoELNSfCobJ-eDInQjq84DBvw" 
+async def start_info_mode(query, context, category):
+    items = menu[category]
+    response_text = f"📖 *{category.upper()}*\n\n"
+    for item in items:
+        description = ", ".join(item['ingredients']) if 'ingredients' in item else item.get('description', '')
+        response_text += f"*{item['name']}*\n_{description}_\n\n"
+    keyboard = [[InlineKeyboardButton("⬅️ Выбрать другую категорию", callback_data=f'mode_info')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(response_text, reply_markup=reply_markup, parse_mode='Markdown')
+
+# --- НОВЫЙ РЕЖИМ: СБОРКА БЛЮДА ---
+async def start_build_mode(query, context, category):
+    items = menu[category]
+    correct_item = random.choice(items)
+    context.user_data['correct_item'] = correct_item
+    context.user_data['user_selection'] = set()
+    await send_build_interface(query, context)
+
+async def send_build_interface(query, context: ContextTypes.DEFAULT_TYPE):
+    correct_item = context.user_data['correct_item']
+    user_selection = context.user_data['user_selection']
+    correct_ings = set(correct_item['ingredients'])
+    distractors_pool = [ing for ing in ALL_INGREDIENTS if ing not in correct_ings]
+    num_distractors = min(len(distractors_pool), 12 - len(correct_ings))
+    distractors = random.sample(distractors_pool, num_distractors)
+    all_options = list(correct_ings) + distractors
+    random.shuffle(all_options)
+
+    keyboard = []
+    row = []
+    for ing in all_options:
+        text = f"✅ {ing}" if ing in user_selection else ing
+        row.append(InlineKeyboardButton(text, callback_data=f"build_select_{ing}"))
+        if len(row) == 2: keyboard.append(row); row = []
+    if row: keyboard.append(row)
+    keyboard.append([InlineKeyboardButton("⬅️ Выбрать категорию", callback_data=f"mode_build")])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    build_text = ", ".join(sorted(list(user_selection))) if user_selection else "пусто"
+    message_text = f"Соберите блюдо: *{correct_item['name'].upper()}*\n\n*Ваш состав:* {build_text}"
+    await query.edit_message_text(text=message_text, reply_markup=reply_markup, parse_mode='Markdown')
+
+async def select_build_ingredient(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    selected_ing = query.data.split('build_select_')[-1]
+    correct_item = context.user_data['correct_item']
+    correct_ings = set(correct_item['ingredients'])
+    user_selection = context.user_data['user_selection']
     
-    # Эта проверка теперь просто не даст запустить код с пустым токеном
+    if selected_ing in correct_ings:
+        user_selection.add(selected_ing)
+        await query.answer("✅ Отлично!")
+        if user_selection == correct_ings:
+            category = context.user_data.get('category')
+            keyboard = [[InlineKeyboardButton("➡️ Следующее блюдо", callback_data=f'start_build_{category}')], [InlineKeyboardButton("⬅️ Выбрать категорию", callback_data='mode_build')]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(f"🎉 Блюдо *{correct_item['name']}* собрано верно!", reply_markup=reply_markup, parse_mode='Markdown')
+        else: await send_build_interface(query, context)
+    else: await query.answer("❌ Ошибка, этого ингредиента здесь нет!", show_alert=True)
+
+# --- ОСНОВНАЯ ФУНКЦИЯ ЗАПУСКА ---
+def main() -> None:
+    TOKEN = "8208724950:AAFfowNG4LOoELNSfCobJ-eDInQjq84DBvw" # <-- НЕ ЗАБУДЬТЕ ВСТАВИТЬ ВАШ ТОКЕН
     if "ВАШ" in TOKEN:
         print("8208724950:AAFfowNG4LOoELNSfCobJ-eDInQjq84DBvw")
         return
 
-    # Остальной код запуска остается без изменений
-    flask_thread = threading.Thread(target=run_flask)
-    flask_thread.start()
-
     application = Application.builder().token(TOKEN).build()
     
+    # Запуск Flask в отдельном потоке
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.start()
+    
+    # Обработчики
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(start, pattern='^main_menu$'))
     application.add_handler(CallbackQueryHandler(select_category, pattern='^mode_'))
     application.add_handler(CallbackQueryHandler(start_training_mode, pattern='^start_'))
     application.add_handler(CallbackQueryHandler(check_guess_answer, pattern='^check_guess_'))
+    application.add_handler(CallbackQueryHandler(select_build_ingredient, pattern='^build_select_'))
     
     print("Бот запущен...")
     application.run_polling()

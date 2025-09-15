@@ -89,11 +89,9 @@ menu = {
         {"name": "Соус Тартар", "description": "40руб"},
     ]
 }
-# Категории, подходящие для тестов на знание состава
 TRAINABLE_CATEGORIES = ["Пиццы", "Пироги", "Кальцоне", "Шаурма"]
 ALL_INGREDIENTS = sorted(list(set(ing for cat in TRAINABLE_CATEGORIES for item in menu[cat] for ing in item['ingredients'])))
 
-# --- Веб-сервер для "пробуждения" ---
 app = Flask(__name__)
 @app.route('/')
 def index():
@@ -103,7 +101,6 @@ def run_flask():
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
 
-# --- УПРАВЛЕНИЕ МЕНЮ ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [
         [InlineKeyboardButton("🤔 Угадать блюдо (тест)", callback_data='mode_guess')],
@@ -119,7 +116,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def select_category(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    mode = query.data.split('_')[1] # guess, build, info
+    mode = query.data.split('_')[1]
 
     categories = menu.keys()
     if mode in ['guess', 'build']:
@@ -130,14 +127,12 @@ async def select_category(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text("Выберите категорию для тренировки:", reply_markup=reply_markup)
 
-# --- РЕЖИМЫ ТРЕНИРОВКИ ---
 async def start_training_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
     _, mode, category = query.data.split('_')
     
     if mode == 'guess':
-        # Логика для "Угадать блюдо"
         items = menu[category]
         correct_item = random.choice(items)
         context.user_data['correct_item_name'] = correct_item['name']
@@ -154,7 +149,6 @@ async def start_training_mode(update: Update, context: ContextTypes.DEFAULT_TYPE
         await query.edit_message_text(f"Из категории '{category}', какому блюду принадлежит состав?\n\n*Состав:* {ingredients_text}", reply_markup=reply_markup)
 
     elif mode == 'info':
-        # Логика для "Справочника"
         items = menu[category]
         response_text = f"📖 *{category.upper()}*\n\n"
         for item in items:
@@ -185,16 +179,17 @@ async def check_guess_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(text, reply_markup=reply_markup)
 
-# (Остальные режимы, например "Собрать блюдо", можно добавить по аналогии для полноты)
-# ...
-
-# --- ОСНОВНАЯ ФУНКЦИЯ ЗАПУСКА ---
+# --- ОСНОВНАЯ ФУНКЦИЯ ЗАПУСКА (ИСПРАВЛЕНО) ---
 def main() -> None:
-    TOKEN = "8208724950:AAG2JJ3in3_f79efQRodGvwGFvCnOLJks5M"
-    if TOKEN == "8208724950:AAG2JJ3in3_f79efQRodGvwGFvCnOLJks5M":
-        print("8208724950:AAG2JJ3in3_f79efQRodGvwGFvCnOLJks5M")
+    # Вставьте сюда ваш НОВЫЙ, СВЕЖЕСГЕНЕРИРОВАННЫЙ токен
+    TOKEN = "8208724950:AAFfowNG4LOoELNSfCobJ-eDInQjq84DBvw" 
+    
+    # Эта проверка теперь просто не даст запустить код с пустым токеном
+    if "ВАШ" in TOKEN:
+        print("8208724950:AAFfowNG4LOoELNSfCobJ-eDInQjq84DBvw")
         return
 
+    # Остальной код запуска остается без изменений
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.start()
 
